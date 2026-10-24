@@ -80,6 +80,7 @@ uci set aria2.main.dir='/mnt/downloads'
 uci set vlmcsd.config.enabled='0'
 uci set vlmcsd.config.auto_activate='0'
 uci set vlmcsd.config.internet_access='0'
+uci set alist.config.enabled='0'
 uci set fstab.@global[0].anon_mount='0'
 
 uci commit network
@@ -90,6 +91,7 @@ uci commit openclash
 uci commit samba4
 uci commit aria2
 uci commit vlmcsd
+uci commit alist
 uci commit fstab
 logger -t j1900-profile 'Generic side-router defaults applied; management address uses upstream DHCP'
 exit 0

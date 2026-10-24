@@ -13,6 +13,7 @@ KFERMercer/OpenWrt-CI 的分步构建思路，工作流和配置针对当前源�
 - Samba4、Windows 网络发现 wsdd2、USB 存储、NTFS3、exFAT 和 UTF-8 文件名。
 - Aria2、AriaNg、Vlmcsd KMS 服务及对应 LuCI 管理页面。
 - DiskMan 磁盘管理、TTYD 网页终端、hd-idle 硬盘休眠、MiniDLNA 媒体共享及对应 LuCI 页面。
+- AList 程序及其独立 Web 管理界面，默认 HTTP 端口为 5244。
 - 排除 ksmbd、autosamba 和旧 automount，使用按 UUID 配置的 block-mount。
 - 默认每次执行时获取最新源码、兼容分支的 feeds、OpenClash 和 Mihomo 稳定版。
   更新完成后固定本次使用的 commit 和 SHA256，避免同一次编译途中版本变化。
@@ -85,6 +86,19 @@ IPv4 网关设置不会接管客户端的 IPv6；需要代理的终端须另外�
 - **TTYD**：默认绑定 LAN，终端使用 `/bin/login`，需要输入系统账号和密码。
 - **hd-idle**：默认停用，先在 LuCI 中选择正确的移动硬盘并设置休眠时间，再启用。
 - **MiniDLNA**：默认停用，先挂载硬盘并选择需要共享的媒体目录，再启用。
+- **AList**：默认停用，数据库和配置位于 `/etc/alist`。先通过 TTYD/SSH 设置管理员密码，
+  再启用服务并在 AList 自带的 Web 界面添加存储；不会预置网盘账号、令牌或个人文件路径。
+  当前选用的是 `alist` 程序包，独立 Web 界面使用 `http://管理地址:5244/`，不是 LuCI 服务页面。
+  首次设置示例：
+
+  ```sh
+  alist --data /etc/alist admin set '替换为你自己的管理密码'
+  uci set alist.config.enabled='1'
+  uci commit alist
+  /etc/init.d/alist enable
+  /etc/init.d/alist restart
+  ```
+
 - **硬盘挂载**：在 LuCI 挂载点中按 UUID 设置；不会自动挂载或自动共享所有插入的分区。
 
 修改 `config.seed` 仅影响之后触发的编译，包括每周定时任务。已经开始的运行使用其触发时的提交，
