@@ -69,6 +69,15 @@ CONFIG_PACKAGE_luci-app-aria2=y
 CONFIG_PACKAGE_vlmcsd=y
 CONFIG_PACKAGE_luci-app-vlmcsd=y
 
+# Storage management, authenticated web terminal and optional media services.
+CONFIG_PACKAGE_luci-app-diskman=y
+CONFIG_PACKAGE_luci-app-ttyd=y
+CONFIG_PACKAGE_ttyd=y
+CONFIG_PACKAGE_luci-app-hd-idle=y
+CONFIG_PACKAGE_hd-idle=y
+CONFIG_PACKAGE_luci-app-minidlna=y
+CONFIG_PACKAGE_minidlna=y
+
 # Avoid the upstream default application's extra proxies, FTP and acceleration.
 # CONFIG_PACKAGE_luci-app-ssr-plus is not set
 # CONFIG_PACKAGE_luci-app-turboacc is not set

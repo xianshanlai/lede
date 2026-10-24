@@ -12,6 +12,7 @@ KFERMercer/OpenWrt-CI 的分步构建思路，工作流和配置针对当前源�
 - Mihomo 固定使用 **amd64-v1** 构建；J1900 不适合需要 AVX/AVX2 的 v2/v3 构建。
 - Samba4、Windows 网络发现 wsdd2、USB 存储、NTFS3、exFAT 和 UTF-8 文件名。
 - Aria2、AriaNg、Vlmcsd KMS 服务及对应 LuCI 管理页面。
+- DiskMan 磁盘管理、TTYD 网页终端、hd-idle 硬盘休眠、MiniDLNA 媒体共享及对应 LuCI 页面。
 - 排除 ksmbd、autosamba 和旧 automount，使用按 UUID 配置的 block-mount。
 - 源码、feeds、OpenClash 使用完整 commit 锁定；Mihomo 使用固定版本和 SHA256。
 
@@ -65,7 +66,14 @@ IPv4 网关设置不会接管客户端的 IPv6；需要代理的终端须另外�
 - **Aria2**：默认停用。先挂载可写数据分区，并设置下载目录和 RPC 密码，再启用。
   `/mnt/downloads` 只是占位目录，不能在未挂载硬盘时直接开始下载。
 - **Vlmcsd**：保留功能，默认停用，可在 LuCI 中按需配置并启用。
+- **DiskMan**：查看磁盘、分区与挂载信息；SMART 是否可用取决于 USB 硬盘盒支持。
+- **TTYD**：默认绑定 LAN，终端使用 `/bin/login`，需要输入系统账号和密码。
+- **hd-idle**：默认停用，先在 LuCI 中选择正确的移动硬盘并设置休眠时间，再启用。
+- **MiniDLNA**：默认停用，先挂载硬盘并选择需要共享的媒体目录，再启用。
 - **硬盘挂载**：在 LuCI 挂载点中按 UUID 设置；不会自动挂载或自动共享所有插入的分区。
+
+修改 `config.seed` 仅影响之后手动触发的编译。已经开始的运行使用其触发时的提交，
+不会因后续修改配置而改变，也不会因推送这些修改自动启动新的编译。
 
 ## 更新锁定版本
 
