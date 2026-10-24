@@ -1,12 +1,15 @@
 {
   "lede": {
     "repository": "https://github.com/xianshanlai/lede.git",
+    "fork_repository": "https://github.com/xianshanlai/lede.git",
+    "upstream_repository": "https://github.com/coolsnowwolf/lede.git",
     "branch": "master",
     "commit": "cbe28467faac4df239ff11fe7880310dd63f8735"
   },
   "feeds": {
     "packages": {
       "repository": "https://github.com/coolsnowwolf/packages.git",
+      "branch": "master",
       "commit": "0ede3e2278aac10f391ab58e6ba9d8b5577cf9d0"
     },
     "luci": {
@@ -16,15 +19,18 @@
     },
     "routing": {
       "repository": "https://github.com/coolsnowwolf/routing.git",
+      "branch": "main",
       "commit": "2d0f967bd6bd95d4c0d3c330e4713e79d75b4c54"
     },
     "telephony": {
       "repository": "https://github.com/coolsnowwolf/telephony.git",
+      "branch": "master",
       "commit": "d3bcb153813b1ff34b3dd0f1bf0dc913984f2921"
     }
   },
   "openclash": {
     "repository": "https://github.com/vernesong/OpenClash.git",
+    "branch": "master",
     "commit": "e553e82e01c697aefbe1555261a503f425e00ccd"
   },
   "mihomo": {

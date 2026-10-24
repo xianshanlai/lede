@@ -11,6 +11,22 @@ on:
           - config-check
         default: firmware
         required: true
+      source_mode:
+        description: Resolve latest revisions or reproduce the committed version lock
+        type: choice
+        options:
+          - latest
+          - locked
+        default: latest
+        required: true
+      source_repository:
+        description: LEDE source for latest mode (locked mode uses its saved repository)
+        type: choice
+        options:
+          - upstream
+          - fork
+        default: upstream
+        required: true
 
 permissions:
   contents: read
@@ -38,17 +54,17 @@ jobs:
 
       - name: Validate inputs and resolve source revision
         id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_MODE: ${{ inputs.source_mode }}
+          SOURCE_REPOSITORY: ${{ inputs.source_repository }}
         run: |
           set -euo pipefail
           python3 ci/j1900/prepare.py --check-inputs
-          python3 - <<'PY'
-          import json
-          import os
-          with open('ci/j1900/sources.lock.json', encoding='utf-8') as handle:
-              lock = json.load(handle)
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
-              handle.write('revision=' + lock['lede']['commit'] + '\n')
-          PY
+          python3 -B -m unittest discover -s ci/j1900 -p 'test_*.py'
+          python3 ci/j1900/resolve.py \
+            --mode "$SOURCE_MODE" --source-repository "$SOURCE_REPOSITORY" \
+            --output artifacts/buildinfo/sources.resolved.json
 
       - name: Prepare Linux build environment
         env:
@@ -71,10 +87,10 @@ jobs:
           sudo apt-get clean
           df -h /
 
-      - name: Checkout locked LEDE source
+      - name: Checkout resolved LEDE source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          repository: xianshanlai/lede
+          repository: ${{ steps.source.outputs.repository }}
           ref: ${{ steps.source.outputs.revision }}
           path: openwrt
           persist-credentials: false
@@ -83,6 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/j1900/prepare.py --source openwrt \
+            --lock-file artifacts/buildinfo/sources.resolved.json \
             2>&1 | tee "$RUNNER_TEMP/j1900-prepare.log"
 
       - name: Download package sources
@@ -112,7 +129,7 @@ jobs:
         if: success() && inputs.mode == 'firmware'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: j1900-firmware-${{ github.run_number }}
+          name: j1900-firmware-${{ github.run_number }}-${{ github.run_attempt }}
           path: artifacts/firmware/
           if-no-files-found: error
           retention-days: 14
@@ -122,7 +139,7 @@ jobs:
         if: success() && inputs.mode == 'firmware'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: j1900-packages-${{ github.run_number }}
+          name: j1900-packages-${{ github.run_number }}-${{ github.run_attempt }}
           path: |
             openwrt/bin/packages/
             openwrt/bin/targets/x86/64/packages/
@@ -133,7 +150,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: j1900-buildinfo-${{ github.run_number }}
+          name: j1900-buildinfo-${{ github.run_number }}-${{ github.run_attempt }}
           path: |
             artifacts/buildinfo/
             ${{ runner.temp }}/j1900-*.log
@@ -145,7 +162,8 @@ jobs:
         run: |
           {
             echo '## J1900 build'
-            echo '- Source and feed revisions: `ci/j1900/sources.lock.json`.'
+            echo '- Actual source, feed and core versions: `sources.resolved.json` in the buildinfo artifact.'
+            echo '- The committed `sources.lock.json` is used only in locked mode.'
             echo '- UEFI: choose the `squashfs-combined-efi.img.gz` image.'
             echo '- Legacy BIOS: choose the `squashfs-combined.img.gz` image.'
             echo '- Root partition: 1024 MiB. Firmware is generic; no personal backups are embedded.'

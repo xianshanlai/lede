@@ -39,8 +39,9 @@ def read_config(path):
     return values
 
 
-def check_inputs():
-    lock = json.loads((HERE / 'sources.lock.json').read_text(encoding='utf-8'))
+def check_inputs(lock_file=None):
+    lock_file = lock_file or HERE / 'sources.lock.json'
+    lock = json.loads(lock_file.read_text(encoding='utf-8'))
     repositories = [lock['lede'], lock['openclash'], *lock['feeds'].values()]
     for item in repositories:
         if not re.fullmatch(r'[a-f0-9]{40}', item['commit']):
@@ -105,15 +106,18 @@ def install_core(source, core):
     return version
 
 
-def prepare(source, lock, requested):
+def prepare(source, lock, requested, lock_file):
     source = source.resolve()
     if revision(source) != lock['lede']['commit']:
-        raise RuntimeError('LEDE checkout does not match sources.lock.json')
+        raise RuntimeError('LEDE checkout does not match the resolved source revision')
     if (source / 'files').exists() and any((source / 'files').iterdir()):
         raise RuntimeError('An existing firmware overlay must be reviewed before building')
     buildinfo = ROOT / 'artifacts/buildinfo'
     buildinfo.mkdir(parents=True, exist_ok=True)
     shutil.copy2(HERE / 'sources.lock.json', buildinfo)
+    resolved_file = buildinfo / 'sources.resolved.json'
+    if lock_file.resolve() != resolved_file.resolve():
+        shutil.copy2(lock_file, resolved_file)
     shutil.copy2(HERE / 'config.seed', buildinfo)
 
     feed_lines = []
@@ -156,6 +160,9 @@ def prepare(source, lock, requested):
             ['git', '-C', str(source), 'log', '-1', '--format=%ct'], text=True
         ).strip(),
         'workflow_commit': os.environ.get('GITHUB_SHA', 'local'),
+        'workflow_run_id': os.environ.get('GITHUB_RUN_ID', 'local'),
+        'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT', 'local'),
+        'resolution': lock.get('_resolution', {'mode': 'locked'}),
     }
     (buildinfo / 'source-revisions.json').write_text(
         json.dumps(metadata, indent=2) + '\n', encoding='utf-8'
@@ -166,13 +173,14 @@ def prepare(source, lock, requested):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--source', type=Path)
+    parser.add_argument('--lock-file', type=Path, default=HERE / 'sources.lock.json')
     parser.add_argument('--check-inputs', action='store_true')
     args = parser.parse_args()
-    lock, requested = check_inputs()
+    lock, requested = check_inputs(args.lock_file)
     if not args.check_inputs:
         if args.source is None:
             parser.error('--source is required when preparing a build')
-        prepare(args.source, lock, requested)
+        prepare(args.source, lock, requested, args.lock_file)
 
 
 if __name__ == '__main__':
