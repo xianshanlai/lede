@@ -1,6 +1,9 @@
 name: J1900 LEDE firmware
 
 on:
+  schedule:
+    # Sunday 20:00 UTC = Monday 04:00 Asia/Shanghai.
+    - cron: '0 20 * * 0'
   workflow_dispatch:
     inputs:
       mode:
@@ -41,6 +44,9 @@ defaults:
 
 env:
   TZ: Asia/Shanghai
+  BUILD_MODE: ${{ inputs.mode || 'firmware' }}
+  SOURCE_MODE: ${{ inputs.source_mode || 'latest' }}
+  SOURCE_REPOSITORY: ${{ inputs.source_repository || 'upstream' }}
 
 jobs:
   build:
@@ -56,8 +62,6 @@ jobs:
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_MODE: ${{ inputs.source_mode }}
-          SOURCE_REPOSITORY: ${{ inputs.source_repository }}
         run: |
           set -euo pipefail
           python3 ci/j1900/prepare.py --check-inputs
@@ -103,14 +107,14 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/j1900-prepare.log"
 
       - name: Download package sources
-        if: inputs.mode == 'firmware'
+        if: env.BUILD_MODE == 'firmware'
         working-directory: openwrt
         run: |
           set -euo pipefail
           make download -j8 2>&1 | tee "$RUNNER_TEMP/j1900-download.log"
 
       - name: Compile firmware
-        if: inputs.mode == 'firmware'
+        if: env.BUILD_MODE == 'firmware'
         working-directory: openwrt
         run: |
           set -euo pipefail
@@ -122,11 +126,11 @@ jobs:
           fi
 
       - name: Collect firmware
-        if: inputs.mode == 'firmware'
+        if: env.BUILD_MODE == 'firmware'
         run: python3 ci/j1900/collect.py --source openwrt --output artifacts/firmware
 
       - name: Upload firmware and checksums
-        if: success() && inputs.mode == 'firmware'
+        if: success() && env.BUILD_MODE == 'firmware'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: j1900-firmware-${{ github.run_number }}-${{ github.run_attempt }}
@@ -136,7 +140,7 @@ jobs:
           compression-level: 0
 
       - name: Upload matching software packages
-        if: success() && inputs.mode == 'firmware'
+        if: success() && env.BUILD_MODE == 'firmware'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: j1900-packages-${{ github.run_number }}-${{ github.run_attempt }}
