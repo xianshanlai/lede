@@ -1,0 +1,154 @@
+name: J1900 LEDE firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build firmware or only validate the resolved configuration
+        type: choice
+        options:
+          - firmware
+          - config-check
+        default: firmware
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: j1900-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - name: Checkout build configuration
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate inputs and resolve source revision
+        id: source
+        run: |
+          set -euo pipefail
+          python3 ci/j1900/prepare.py --check-inputs
+          python3 - <<'PY'
+          import json
+          import os
+          with open('ci/j1900/sources.lock.json', encoding='utf-8') as handle:
+              lock = json.load(handle)
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write('revision=' + lock['lede']['commit'] + '\n')
+          PY
+
+      - name: Prepare Linux build environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            antlr3 asciidoc autoconf automake autopoint bc binutils bison \
+            build-essential bzip2 ca-certificates ccache clang cmake cpio curl \
+            device-tree-compiler file flex g++-multilib gawk gcc-multilib \
+            genisoimage gettext git gperf help2man intltool libelf-dev \
+            libfuse-dev libglib2.0-dev libgmp-dev libltdl-dev libmpc-dev \
+            libmpfr-dev libncurses-dev libnsl-dev libpython3-dev libreadline-dev \
+            libssl-dev libtool llvm lz4 ninja-build p7zip-full patch pkgconf \
+            python3 python3-pyelftools python3-setuptools qemu-utils rsync \
+            scons squashfs-tools subversion swig texinfo unzip wget xmlto \
+            xxd xz-utils zlib1g-dev zstd
+          sudo apt-get clean
+          df -h /
+
+      - name: Checkout locked LEDE source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: xianshanlai/lede
+          ref: ${{ steps.source.outputs.revision }}
+          path: openwrt
+          persist-credentials: false
+
+      - name: Prepare packages, core and configuration
+        run: |
+          set -euo pipefail
+          python3 ci/j1900/prepare.py --source openwrt \
+            2>&1 | tee "$RUNNER_TEMP/j1900-prepare.log"
+
+      - name: Download package sources
+        if: inputs.mode == 'firmware'
+        working-directory: openwrt
+        run: |
+          set -euo pipefail
+          make download -j8 2>&1 | tee "$RUNNER_TEMP/j1900-download.log"
+
+      - name: Compile firmware
+        if: inputs.mode == 'firmware'
+        working-directory: openwrt
+        run: |
+          set -euo pipefail
+          jobs=$(nproc)
+          (( jobs <= 4 )) || jobs=4
+          if ! make -j"$jobs" V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build.log"; then
+            echo 'Parallel build failed; retrying once with one job for diagnostics.'
+            make -j1 V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build-retry.log"
+          fi
+
+      - name: Collect firmware
+        if: inputs.mode == 'firmware'
+        run: python3 ci/j1900/collect.py --source openwrt --output artifacts/firmware
+
+      - name: Upload firmware and checksums
+        if: success() && inputs.mode == 'firmware'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: j1900-firmware-${{ github.run_number }}
+          path: artifacts/firmware/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload matching software packages
+        if: success() && inputs.mode == 'firmware'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: j1900-packages-${{ github.run_number }}
+          path: |
+            openwrt/bin/packages/
+            openwrt/bin/targets/x86/64/packages/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload build information and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: j1900-buildinfo-${{ github.run_number }}
+          path: |
+            artifacts/buildinfo/
+            ${{ runner.temp }}/j1900-*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Summarize build
+        if: always()
+        run: |
+          {
+            echo '## J1900 build'
+            echo '- Source and feed revisions: `ci/j1900/sources.lock.json`.'
+            echo '- UEFI: choose the `squashfs-combined-efi.img.gz` image.'
+            echo '- Legacy BIOS: choose the `squashfs-combined.img.gz` image.'
+            echo '- Root partition: 1024 MiB. Firmware is generic; no personal backups are embedded.'
+            echo '- Fresh boot: connect eth0 or eth2 to the main router; find LEDE-J1900 in its DHCP leases.'
+            echo '- Build information and logs are uploaded even when a build step fails.'
+          } >> "$GITHUB_STEP_SUMMARY"

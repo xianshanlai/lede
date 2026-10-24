@@ -1,0 +1,15 @@
+#!/bin/sh
+[ "$ACTION" = stratum ] || exit 0
+case "${stratum:-}" in
+  ''|*[!0-9]*) exit 0 ;;
+esac
+[ "$stratum" -ge 1 ] && [ "$stratum" -le 15 ] || exit 0
+[ "$(date +%s)" -ge 1704067200 ] || exit 0
+[ ! -e /tmp/j1900-rtc-saved ] || exit 0
+umask 077
+if [ -c /dev/rtc0 ]; then
+  /sbin/hwclock -w -u -f /dev/rtc0 || exit 1
+fi
+date -u '+%Y-%m-%dT%H:%M:%SZ' > /etc/j1900-last-good-time || exit 1
+touch /tmp/j1900-rtc-saved
+logger -t j1900-clock 'Synchronized time saved to RTC and last-good-time marker'

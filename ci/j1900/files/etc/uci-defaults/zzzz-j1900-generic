@@ -1,0 +1,95 @@
+#!/bin/sh
+# Generic factory defaults. Never embed an existing router configuration here.
+. /lib/functions.sh
+
+lan_proto="$(uci -q get network.lan.proto)"
+lan_address="$(uci -q get network.lan.ipaddr)"
+if [ "$lan_proto" != static ] || [ "$lan_address" != 192.168.1.1 ]; then
+  logger -t j1900-profile 'Existing network settings detected; factory profile not applied'
+  exit 0
+fi
+
+bridge_section=
+find_bridge() {
+  local name
+  config_get name "$1" name
+  [ "$name" = br-lan ] && bridge_section="$1"
+}
+config_load network
+config_foreach find_bridge device
+if [ -z "$bridge_section" ]; then
+  bridge_section="$(uci add network device)"
+fi
+uci set "network.$bridge_section.name=br-lan"
+uci set "network.$bridge_section.type=bridge"
+uci -q delete "network.$bridge_section.ports"
+uci add_list "network.$bridge_section.ports=eth0"
+uci add_list "network.$bridge_section.ports=eth2"
+uci set network.lan.device='br-lan'
+uci -q delete network.lan.ifname
+uci set network.lan.proto='dhcp'
+uci set network.lan.peerdns='1'
+uci set network.lan.defaultroute='1'
+uci set network.lan.delegate='0'
+uci -q delete network.lan.ipaddr
+uci -q delete network.lan.netmask
+uci -q delete network.lan.gateway
+uci -q delete network.lan.dns
+uci -q delete network.lan.ip6assign
+uci -q set network.wan.auto='0'
+uci -q set network.wan6.auto='0'
+
+uci set dhcp.lan.ignore='1'
+uci set dhcp.lan.dhcpv4='disabled'
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ra='disabled'
+uci set firewall.@defaults[0].flow_offloading='0'
+uci set firewall.@defaults[0].flow_offloading_hw='0'
+enable_lan_nat() {
+  local name
+  config_get name "$1" name
+  [ "$name" = lan ] && uci set "firewall.$1.masq=1"
+}
+config_load firewall
+config_foreach enable_lan_nat zone
+
+uci set system.@system[0].hostname='LEDE-J1900'
+uci set system.@system[0].log_size='256'
+uci set system.@system[0].timezone='CST-8'
+uci set system.@system[0].zonename='Asia/Shanghai'
+uci -q delete system.ntp.server
+uci add_list system.ntp.server='203.107.6.88'
+uci add_list system.ntp.server='ntp1.aliyun.com'
+uci add_list system.ntp.server='ntp.tencent.com'
+uci set system.ntp.enabled='1'
+
+uci set openclash.config.enable='0'
+uci set openclash.config.core_type='Meta'
+uci set openclash.config.core_version='linux-amd64-v1'
+uci set openclash.config.bypass_gateway_compatible='1'
+uci set openclash.config.delay_start='60'
+uci set openclash.config.log_level='warning'
+uci set samba4.@samba[0].interface='lan'
+uci set samba4.@samba[0].allow_legacy_protocols='0'
+uci set samba4.@samba[0].disable_netbios='1'
+uci set samba4.@samba[0].disable_ad_dc='1'
+uci set samba4.@samba[0].disable_winbind='1'
+uci set samba4.@samba[0].disable_async_io='1'
+uci set aria2.main.enabled='0'
+uci set aria2.main.dir='/mnt/downloads'
+uci set vlmcsd.config.enabled='0'
+uci set vlmcsd.config.auto_activate='0'
+uci set vlmcsd.config.internet_access='0'
+uci set fstab.@global[0].anon_mount='0'
+
+uci commit network
+uci commit dhcp
+uci commit firewall
+uci commit system
+uci commit openclash
+uci commit samba4
+uci commit aria2
+uci commit vlmcsd
+uci commit fstab
+logger -t j1900-profile 'Generic side-router defaults applied; management address uses upstream DHCP'
+exit 0

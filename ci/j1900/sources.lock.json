@@ -1,0 +1,35 @@
+{
+  "lede": {
+    "repository": "https://github.com/xianshanlai/lede.git",
+    "branch": "master",
+    "commit": "cbe28467faac4df239ff11fe7880310dd63f8735"
+  },
+  "feeds": {
+    "packages": {
+      "repository": "https://github.com/coolsnowwolf/packages.git",
+      "commit": "0ede3e2278aac10f391ab58e6ba9d8b5577cf9d0"
+    },
+    "luci": {
+      "repository": "https://github.com/coolsnowwolf/luci.git",
+      "branch": "openwrt-25.12",
+      "commit": "c80fbeccffd148e269e2ca807a41da645a832b6d"
+    },
+    "routing": {
+      "repository": "https://github.com/coolsnowwolf/routing.git",
+      "commit": "2d0f967bd6bd95d4c0d3c330e4713e79d75b4c54"
+    },
+    "telephony": {
+      "repository": "https://github.com/coolsnowwolf/telephony.git",
+      "commit": "d3bcb153813b1ff34b3dd0f1bf0dc913984f2921"
+    }
+  },
+  "openclash": {
+    "repository": "https://github.com/vernesong/OpenClash.git",
+    "commit": "e553e82e01c697aefbe1555261a503f425e00ccd"
+  },
+  "mihomo": {
+    "version": "v1.19.33",
+    "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1-v1.19.33.gz",
+    "sha256": "8ec92e7b2fdc6b853ba00156bab7e4e965c8b0d843b8c4ac8ab98795f02ad524"
+  }
+}
