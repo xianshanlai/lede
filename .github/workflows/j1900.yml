@@ -2,8 +2,8 @@ name: J1900 LEDE firmware
 
 on:
   schedule:
-    # Sunday 20:00 UTC = Monday 04:00 Asia/Shanghai.
-    - cron: '0 20 * * 0'
+    # Friday 20:00 UTC = Saturday 04:00 Asia/Shanghai.
+    - cron: '0 20 * * 5'
   workflow_dispatch:
     inputs:
       mode:
