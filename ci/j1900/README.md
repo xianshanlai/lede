@@ -13,6 +13,7 @@ KFERMercer/OpenWrt-CI 的分步构建思路，工作流和配置针对当前源�
 - Samba4、Windows 网络发现 wsdd2、USB 存储、NTFS3、exFAT 和 UTF-8 文件名。
 - Aria2、AriaNg、Vlmcsd KMS 服务及对应 LuCI 管理页面。
 - DiskMan 磁盘管理、TTYD 网页终端、hd-idle 硬盘休眠、MiniDLNA 媒体共享及对应 LuCI 页面。
+- OpenList-CAS 原生程序、开机服务及 STRM 生成器；不包含个人网盘账号或令牌。
 - 排除 ksmbd、autosamba 和旧 automount，使用按 UUID 配置的 block-mount。
 - 默认每次执行时获取最新源码、兼容分支的 feeds、OpenClash 和 Mihomo 稳定版。
   更新完成后固定本次使用的 commit 和 SHA256，避免同一次编译途中版本变化。
@@ -85,6 +86,10 @@ IPv4 网关设置不会接管客户端的 IPv6；需要代理的终端须另外�
 - **TTYD**：默认绑定 LAN，终端使用 `/bin/login`，需要输入系统账号和密码。
 - **hd-idle**：默认停用，先在 LuCI 中选择正确的移动硬盘并设置休眠时间，再启用。
 - **MiniDLNA**：默认停用，先挂载硬盘并选择需要共享的媒体目录，再启用。
+- **OpenList-CAS**：独立 Web 界面使用 `http://管理地址:5244/`，数据位于 `/etc/openlist-cas`。
+  固件固定使用经过 SHA256 校验的非官方 `v4.2.3.3`，用于天翼云 `.cas` 临时恢复和播放。
+  STRM 生成器位于 `/usr/libexec/openlist-cas-strm.lua`，仅在手动提供
+  `/etc/openlist-cas/strm-generator.json` 后运行；固件不会预置账号、密码、云盘目录或定时任务。
 - **硬盘挂载**：在 LuCI 挂载点中按 UUID 设置；不会自动挂载或自动共享所有插入的分区。
 
 修改 `config.seed` 仅影响之后触发的编译，包括每周定时任务。已经开始的运行使用其触发时的提交，

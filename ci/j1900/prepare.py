@@ -66,6 +66,8 @@ def check_inputs(lock_file=None):
     assert seed['CONFIG_PACKAGE_ksmbd-server'] == 'n'
     assert seed['CONFIG_PACKAGE_automount'] == 'n'
     assert seed['CONFIG_PACKAGE_luci-app-vlmcsd'] == 'y'
+    assert seed['CONFIG_PACKAGE_openlist-cas'] == 'y'
+    assert seed['CONFIG_PACKAGE_alist'] == 'n'
     assert seed['CONFIG_TARGET_ROOTFS_PARTSIZE'] == '1024'
     print('Locked sources, baseline core and generic profile validated.', flush=True)
     return lock, seed
@@ -129,6 +131,7 @@ def prepare(source, lock, requested, lock_file):
     fetch(lock['openclash'], plugin_source)
     plugin_destination = source / 'package/custom/luci-app-openclash'
     shutil.copytree(plugin_source / 'luci-app-openclash', plugin_destination)
+    shutil.copytree(HERE / 'package', source / 'package/custom', dirs_exist_ok=True)
 
     # Existing shallow feed checkouts plus commit-pinned URLs avoid moving branches.
     run('./scripts/feeds', 'update', '-a', cwd=source)
