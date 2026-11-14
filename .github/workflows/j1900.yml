@@ -118,14 +118,27 @@ jobs:
         working-directory: openwrt
         run: |
           set -euo pipefail
-          # Avoid known host-tool prepare races before the main parallel build.
+          # elfutils may invoke the staged bison before its data files finish installing in parallel.
           make tools/bison/compile -j1 V=s
-          make package/libs/gettext-full/host/compile -j1 V=s
           jobs=$(nproc)
           (( jobs <= 4 )) || jobs=4
           if ! make -j"$jobs" V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build.log"; then
             echo 'Parallel build failed; retrying once with one job for diagnostics.'
-            make -j1 V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build-retry.log"
+            if ! make -j1 V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build-retry.log"; then
+              diagnostics="$({
+                grep -E 'ERROR:|make\[[0-9]+\]: \*\*\*|No such file|not found|failed to build' \
+                  "$RUNNER_TEMP/j1900-build.log" "$RUNNER_TEMP/j1900-build-retry.log" || true
+              } | tail -n 80)"
+              printf '%s\n' "$diagnostics"
+              {
+                echo '### Final compiler diagnostics'
+                echo '```text'
+                printf '%s\n' "$diagnostics"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo '::error title=J1900 firmware compile failed::See Final compiler diagnostics in the run summary.'
+              exit 1
+            fi
           fi
 
       - name: Collect firmware
