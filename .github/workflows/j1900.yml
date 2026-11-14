@@ -89,6 +89,11 @@ jobs:
             scons squashfs-tools subversion swig texinfo unzip wget xmlto \
             xxd xz-utils zlib1g-dev zstd
           sudo apt-get clean
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
           df -h /
 
       - name: Checkout resolved LEDE source
@@ -121,7 +126,7 @@ jobs:
           # elfutils may invoke the staged bison before its data files finish installing in parallel.
           make tools/bison/compile -j1 V=s
           jobs=$(nproc)
-          (( jobs <= 4 )) || jobs=4
+          (( jobs <= 2 )) || jobs=2
           if ! make -j"$jobs" V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build.log"; then
             echo 'Parallel build failed; retrying once with one job for diagnostics.'
             if ! make -j1 V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build-retry.log"; then
