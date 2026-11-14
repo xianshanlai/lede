@@ -118,6 +118,8 @@ jobs:
         working-directory: openwrt
         run: |
           set -euo pipefail
+          # elfutils may invoke the staged bison before its data files finish installing in parallel.
+          make tools/bison/compile -j1 V=s
           jobs=$(nproc)
           (( jobs <= 4 )) || jobs=4
           if ! make -j"$jobs" V=s 2>&1 | tee "$RUNNER_TEMP/j1900-build.log"; then
