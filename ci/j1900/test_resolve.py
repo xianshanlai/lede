@@ -107,6 +107,14 @@ class SourceResolutionTests(unittest.TestCase):
             selected, _ = prepare.check_inputs(path)
         self.assertEqual(selected['lede']['commit'], 'a' * 40)
 
+    def test_openclash_gets_po2lmo_host_dependency(self):
+        with tempfile.TemporaryDirectory(prefix='.test-openclash-', dir=resolve.HERE) as directory:
+            makefile = Path(directory) / 'Makefile'
+            makefile.write_text('include $(INCLUDE_DIR)/package.mk\n', encoding='utf-8')
+            prepare.add_openclash_host_dependency(makefile)
+            contents = makefile.read_text(encoding='utf-8')
+        self.assertIn('PKG_BUILD_DEPENDS:=luci-base/host', contents)
+
 
 if __name__ == '__main__':
     unittest.main()

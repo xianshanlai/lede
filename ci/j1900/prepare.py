@@ -85,6 +85,19 @@ def fetch(item, destination):
         raise RuntimeError('Downloaded source revision does not match its lock')
 
 
+def add_openclash_host_dependency(makefile):
+    contents = makefile.read_text(encoding='utf-8')
+    if 'luci-base/host' in contents:
+        return
+    marker = 'include $(INCLUDE_DIR)/package.mk'
+    if contents.count(marker) != 1:
+        raise RuntimeError('OpenClash package Makefile layout changed')
+    makefile.write_text(
+        contents.replace(marker, 'PKG_BUILD_DEPENDS:=luci-base/host\n\n' + marker),
+        encoding='utf-8',
+    )
+
+
 def install_core(source, core):
     download = source / 'dl' / ('mihomo-amd64-v1-' + core['version'] + '.gz')
     download.parent.mkdir(parents=True, exist_ok=True)
@@ -129,13 +142,14 @@ def prepare(source, lock, requested, lock_file):
     (source / 'feeds.conf.default').write_text(''.join(feed_lines), encoding='utf-8')
     plugin_source = source / '.ci-sources/openclash'
     fetch(lock['openclash'], plugin_source)
-    plugin_destination = source / 'package/custom/luci-app-openclash'
-    shutil.copytree(plugin_source / 'luci-app-openclash', plugin_destination)
-    shutil.copytree(HERE / 'package', source / 'package/custom', dirs_exist_ok=True)
 
     # Existing shallow feed checkouts plus commit-pinned URLs avoid moving branches.
     run('./scripts/feeds', 'update', '-a', cwd=source)
     run('./scripts/feeds', 'install', '-a', cwd=source)
+    plugin_destination = source / 'package/custom/luci-app-openclash'
+    shutil.copytree(plugin_source / 'luci-app-openclash', plugin_destination)
+    add_openclash_host_dependency(plugin_destination / 'Makefile')
+    shutil.copytree(HERE / 'package', source / 'package/custom', dirs_exist_ok=True)
     shutil.copytree(HERE / 'files', source / 'files', dirs_exist_ok=True)
     for path in (source / 'files').rglob('*'):
         if path.is_file():
