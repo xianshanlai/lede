@@ -32,6 +32,12 @@ define Package/openlist-cas/conffiles
 /etc/openlist-cas
 endef
 
+define Build/Prepare
+	rm -rf $(PKG_BUILD_DIR)
+	$(INSTALL_DIR) $(PKG_BUILD_DIR)
+	$(TAR) -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
+endef
+
 define Build/Compile
 endef
 
