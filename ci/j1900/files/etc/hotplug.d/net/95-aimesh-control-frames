@@ -1,0 +1,10 @@
+#!/bin/sh
+
+[ "$ACTION" = add ] || exit 0
+
+mask_path=/sys/class/net/br-lan/bridge/group_fwd_mask
+[ -w "$mask_path" ] || exit 0
+[ "$(cat "$mask_path")" = 0x4008 ] && exit 0
+
+echo 0x4008 > "$mask_path"
+logger -t aimesh-bridge 'Enabled EAPOL and LLDP forwarding on br-lan'

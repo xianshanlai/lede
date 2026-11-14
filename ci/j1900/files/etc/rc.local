@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Apply the AiMesh bridge mask after normal boot as a fallback for net hotplug.
+[ ! -x /etc/hotplug.d/net/95-aimesh-control-frames ] || \
+	ACTION=add /etc/hotplug.d/net/95-aimesh-control-frames
+
+exit 0
