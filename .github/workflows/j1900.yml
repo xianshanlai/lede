@@ -89,10 +89,6 @@ jobs:
             scons squashfs-tools subversion swig texinfo unzip wget xmlto \
             xxd xz-utils zlib1g-dev zstd
           sudo apt-get clean
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
           free -h
           df -h /
 
